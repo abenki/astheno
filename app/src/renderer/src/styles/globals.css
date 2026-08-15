@@ -1,0 +1,91 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Surfaces — flat, neutral, no warmth */
+  --color-surface-sidebar: #fcfcfc;
+  --color-surface-canvas: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f5f5f5;
+  --color-surface-overlay: #ffffff;
+
+  /* Borders */
+  --color-border-subtle: #ededed;
+  --color-border-default: #e2e2e2;
+  --color-border-strong: #d4d4d4;
+
+  /* Text */
+  --color-text-primary: #111111;
+  --color-text-secondary: #6b6b6b;
+  --color-text-tertiary: #9c9c9c;
+  --color-text-on-accent: #ffffff;
+  --color-text-disabled: #c4c4c4;
+
+  /* Accent — single blue, used sparingly */
+  --color-accent: #3467e3;
+  --color-accent-hover: #2c58c9;
+  --color-accent-subtle: #eef2fd;
+
+  /* Semantic */
+  --color-danger: #d13438;
+  --color-danger-subtle: #fdecec;
+  --color-success: #1a8a4a;
+  --color-warning: #b76f00;
+
+  /* Type */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, 'Menlo', monospace;
+
+  /* Radius — generous, rounded-rectangle by default, nothing reads as "straight" */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Shadows — soft, low-contrast (flat surfaces, not skeuomorphic) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+@layer base {
+  * {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100vh;
+  }
+}
+
+@layer utilities {
+  .drag {
+    -webkit-app-region: drag;
+  }
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+}
