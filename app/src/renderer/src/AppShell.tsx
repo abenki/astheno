@@ -15,7 +15,7 @@ export function AppShell(): React.JSX.Element {
   const chat = useChat()
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-(--color-surface-sunken)">
       {sidebarOpen && (
         <Sidebar
           mode={mode}
@@ -36,7 +36,9 @@ export function AppShell(): React.JSX.Element {
         </Sidebar>
       )}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        className={`my-3 mr-3 flex flex-1 flex-col overflow-hidden rounded-(--radius-sm) border border-(--color-border-subtle) bg-(--color-surface-canvas) shadow-sm ${sidebarOpen ? 'ml-3' : 'ml-0'}`}
+      >
         {sidebarOpen ? (
           <div className="drag h-[52px] shrink-0" />
         ) : (

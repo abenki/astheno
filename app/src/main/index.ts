@@ -109,7 +109,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 19 },
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5',
     ...(process.platform === 'linux' ? {} : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),

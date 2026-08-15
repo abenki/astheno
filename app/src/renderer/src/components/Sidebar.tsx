@@ -21,10 +21,10 @@ export function Sidebar({
   children
 }: SidebarProps): React.JSX.Element {
   return (
-    <div className="flex h-full w-60 shrink-0 flex-col border-r border-(--color-border-subtle) bg-(--color-surface-sidebar)">
+    <div className="ml-3 flex h-full w-60 shrink-0 flex-col">
       <TopIcons align="end" sidebarOpen onToggleSidebar={onHideSidebar} />
 
-      <div className="flex flex-col gap-0.5 px-3">
+      <div className="flex flex-col gap-0.5 px-0">
         <SidebarItem
           icon={<MessageCircle />}
           label="Chat"
@@ -39,9 +39,9 @@ export function Sidebar({
         />
       </div>
 
-      <div className="mt-3 flex flex-1 flex-col overflow-hidden px-3">{children}</div>
+      <div className="mt-3 flex flex-1 flex-col overflow-hidden px-0">{children}</div>
 
-      <div className="border-t border-(--color-border-subtle) p-3">
+      <div className="border-t border-(--color-border-subtle) px-0 py-3">
         <SidebarItem icon={<Settings />} label="Settings" onClick={onOpenSettings} />
       </div>
     </div>
