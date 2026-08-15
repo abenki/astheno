@@ -9,13 +9,15 @@ interface ChatHistoryListProps {
   activeChatId: string | null
   onSelectChat: (id: string) => void
   onNewChat: () => void
+  onRenameChat: (id: string, title: string) => void
 }
 
 export function ChatHistoryList({
   chats,
   activeChatId,
   onSelectChat,
-  onNewChat
+  onNewChat,
+  onRenameChat
 }: ChatHistoryListProps): React.JSX.Element {
   const groups = groupChatsByRecency(chats)
 
@@ -42,6 +44,7 @@ export function ChatHistoryList({
                     title={chat.title}
                     active={chat.id === activeChatId}
                     onClick={() => onSelectChat(chat.id)}
+                    onRename={(title) => onRenameChat(chat.id, title)}
                   />
                 ))}
               </div>

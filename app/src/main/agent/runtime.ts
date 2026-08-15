@@ -20,6 +20,15 @@ import type {
 // so no custom provider registration is needed here.
 const GOOGLE_MODEL_ID = 'gemini-flash-latest'
 
+// Auto-titling wants the cheapest, highest-free-tier-throughput model in the
+// catalog, not the chat's own model — it's a one-off summarization call, not
+// part of the conversation. Google's "flash-lite" tier is the one it grants
+// the highest free-plan requests-per-minute/per-day to (it's also, not
+// coincidentally, the cheapest per-token tier — see the cost table in
+// providers/data/google.json). "-latest" alias for the same reason
+// GOOGLE_MODEL_ID uses it: stays correct as Google's catalog moves under it.
+const TITLE_MODEL_ID = 'gemini-flash-lite-latest'
+
 // Providers Astheno's Settings UI knows how to collect a key for. Adding a
 // provider here (once it's wired into a session the way Google is) is the
 // only step needed to get it a Settings row — status/save/clear are generic.
@@ -65,10 +74,36 @@ export async function listChats(): Promise<ChatSummary[]> {
       sessionPaths.set(info.id, info.path)
       return {
         chatId: info.id,
-        title: info.firstMessage || 'New chat',
+        title: info.name || info.firstMessage || 'New chat',
         updatedAt: info.modified.getTime()
       }
     })
+}
+
+/**
+ * Get (or lazily resume from disk) the live session entry for a chat. Shared
+ * by openChat, renameChat, and generateChatTitle so renaming/titling works
+ * even for a chat the renderer never opened this run (e.g. renamed straight
+ * from the sidebar hover menu without entering it).
+ */
+async function ensureChatEntry(chatId: string): Promise<ChatEntry> {
+  const existing = chats.get(chatId)
+  if (existing) return existing
+
+  const path = sessionPaths.get(chatId)
+  if (!path) throw new Error(`Unknown chat ${chatId}`)
+
+  const modelRuntime = await getModelRuntime()
+  const { session } = await createAgentSession({
+    cwd: getAgentHomeDir(),
+    modelRuntime,
+    noTools: 'all',
+    sessionManager: SessionManager.open(path)
+  })
+
+  const entry: ChatEntry = { session, assistantTurn: 0 }
+  chats.set(chatId, entry)
+  return entry
 }
 
 export async function createChat(modelId?: string): Promise<{ chatId: string; modelId: string }> {
@@ -110,29 +145,67 @@ export async function createChat(modelId?: string): Promise<{ chatId: string; mo
 export async function openChat(
   chatId: string
 ): Promise<{ chatId: string; messages: ChatMessageSnapshot[]; modelId: string }> {
-  let entry = chats.get(chatId)
-
-  if (!entry) {
-    const path = sessionPaths.get(chatId)
-    if (!path) throw new Error(`Unknown chat ${chatId}`)
-
-    const modelRuntime = await getModelRuntime()
-    const { session } = await createAgentSession({
-      cwd: getAgentHomeDir(),
-      modelRuntime,
-      noTools: 'all',
-      sessionManager: SessionManager.open(path)
-    })
-
-    entry = { session, assistantTurn: 0 }
-    chats.set(chatId, entry)
-  }
-
+  const entry = await ensureChatEntry(chatId)
   return {
     chatId,
     messages: toMessageSnapshots(chatId, entry.session.messages),
     modelId: entry.session.model?.id ?? GOOGLE_MODEL_ID
   }
+}
+
+export async function renameChat(chatId: string, title: string): Promise<void> {
+  const trimmed = title.trim()
+  if (!trimmed) throw new Error('Title cannot be empty')
+  const entry = await ensureChatEntry(chatId)
+  entry.session.sessionManager.appendSessionInfo(trimmed)
+}
+
+function cleanGeneratedTitle(raw: string): string {
+  const trimmed = raw
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?]+$/, '')
+  return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed
+}
+
+/**
+ * Summarizes a chat's first message into a short title using TITLE_MODEL_ID,
+ * via a throwaway in-memory session — never persisted, never touches the
+ * real chat's history, so the summarization prompt doesn't pollute the
+ * conversation the user is actually having. Persists the result onto the
+ * real chat the same way renameChat does, so it survives restarts and shows
+ * up in listChats() like a manual rename would.
+ */
+export async function generateChatTitle(chatId: string, firstMessage: string): Promise<string> {
+  const modelRuntime = await getModelRuntime()
+  const model = modelRuntime.getModel('google', TITLE_MODEL_ID)
+  if (!model) throw new Error(`Model google/${TITLE_MODEL_ID} not found`)
+
+  const { session: scratchSession } = await createAgentSession({
+    cwd: getAgentHomeDir(),
+    modelRuntime,
+    model,
+    noTools: 'all',
+    sessionManager: SessionManager.inMemory(getAgentHomeDir())
+  })
+
+  await scratchSession.prompt(
+    'Summarize the following chat message into a short conversation title ' +
+      '(3-6 words, no quotes, no trailing punctuation). Reply with only the title.\n\n' +
+      `Message:\n${firstMessage}`
+  )
+
+  const reply = [...scratchSession.messages].reverse().find((m) => m.role === 'assistant')
+  const text = reply ? reply.content.map((c) => (c.type === 'text' ? c.text : '')).join('') : ''
+
+  const title = cleanGeneratedTitle(text)
+  if (!title) throw new Error('Model returned an empty title')
+
+  const entry = await ensureChatEntry(chatId)
+  entry.session.sessionManager.appendSessionInfo(title)
+
+  return title
 }
 
 function toMessageSnapshots(chatId: string, messages: AgentSession['messages']): ChatMessageSnapshot[] {

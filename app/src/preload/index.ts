@@ -37,6 +37,8 @@ export interface AsthenoChatApi {
   abort: (chatId: string) => Promise<void>
   listModels: () => Promise<ChatModelInfo[]>
   setModel: (chatId: string, modelId: string) => Promise<void>
+  rename: (chatId: string, title: string) => Promise<void>
+  generateTitle: (chatId: string, firstMessage: string) => Promise<{ title: string }>
   onEvent: (callback: (event: ChatStreamEvent) => void) => () => void
 }
 
@@ -65,6 +67,9 @@ const chat: AsthenoChatApi = {
   abort: (chatId) => ipcRenderer.invoke('astheno:chat:abort', chatId),
   listModels: () => ipcRenderer.invoke('astheno:chat:listModels'),
   setModel: (chatId, modelId) => ipcRenderer.invoke('astheno:chat:setModel', chatId, modelId),
+  rename: (chatId, title) => ipcRenderer.invoke('astheno:chat:rename', chatId, title),
+  generateTitle: (chatId, firstMessage) =>
+    ipcRenderer.invoke('astheno:chat:generateTitle', chatId, firstMessage),
   onEvent: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: ChatStreamEvent): void => callback(payload)
     ipcRenderer.on('astheno:chat:event', listener)

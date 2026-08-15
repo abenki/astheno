@@ -29,6 +29,7 @@ export function AppShell(): React.JSX.Element {
               activeChatId={chat.activeChatId}
               onSelectChat={chat.selectChat}
               onNewChat={chat.newChat}
+              onRenameChat={chat.renameChat}
             />
           ) : (
             <p className="px-2.5 text-[13px] text-(--color-text-tertiary)">Nothing here yet</p>

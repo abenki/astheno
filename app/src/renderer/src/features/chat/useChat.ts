@@ -19,6 +19,7 @@ export interface ChatState {
   newChat: () => void
   send: (text: string) => void
   setModel: (modelId: string) => void
+  renameChat: (id: string, title: string) => void
 }
 
 export function useChat(): ChatState {
@@ -154,7 +155,9 @@ export function useChat(): ChatState {
     setIsSending(true)
 
     let chatId = activeChat?.id
+    let isNewChat = false
     if (!chatId) {
+      isNewChat = true
       const created = await window.api.chat.createChat(selectedModelId ?? undefined)
       chatId = created.chatId
       const newChat: Chat = {
@@ -171,7 +174,30 @@ export function useChat(): ChatState {
       appendMessage(chatId, userMessage)
     }
 
+    if (isNewChat) {
+      // Fire-and-forget: don't block sending the actual prompt on this. The
+      // provisional truncated-text title set above stays if it fails or is
+      // slower than the reply.
+      window.api.chat
+        .generateTitle(chatId, text)
+        .then(({ title }) => {
+          setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, title } : c)))
+        })
+        .catch((err) => console.error('[chat] title generation failed', err))
+    }
+
     await window.api.chat.prompt(chatId, text)
+  }
+
+  async function renameChat(id: string, title: string): Promise<void> {
+    const trimmed = title.trim()
+    if (!trimmed) return
+    setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c)))
+    try {
+      await window.api.chat.rename(id, trimmed)
+    } catch (err) {
+      console.error('[chat] rename failed', err)
+    }
   }
 
   function setModel(nextModelId: string): void {
@@ -196,6 +222,9 @@ export function useChat(): ChatState {
     send: (text: string) => {
       void send(text)
     },
-    setModel
+    setModel,
+    renameChat: (id: string, title: string) => {
+      void renameChat(id, title)
+    }
   }
 }

@@ -11,6 +11,8 @@ import {
   openChat,
   listModels,
   setChatModel,
+  renameChat,
+  generateChatTitle,
   getProviderStatus,
   setProviderApiKey,
   clearProviderApiKey
@@ -84,6 +86,15 @@ function registerChatIpc(): void {
 
   handle('astheno:chat:setModel', async (chatId: string, modelId: string) => {
     await setChatModel(chatId, modelId)
+  })
+
+  handle('astheno:chat:rename', async (chatId: string, title: string) => {
+    await renameChat(chatId, title)
+  })
+
+  handle('astheno:chat:generateTitle', async (chatId: string, firstMessage: string) => {
+    const title = await generateChatTitle(chatId, firstMessage)
+    return { title }
   })
 }
 
