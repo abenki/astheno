@@ -1,6 +1,7 @@
 import { Check, Copy, RotateCcw, ThumbsDown } from 'lucide-react'
 import { useState } from 'react'
 import { IconButton } from '../../components/ui/IconButton'
+import { Markdown } from '../../components/Markdown'
 import { Message } from './types'
 
 interface MessageBubbleProps {
@@ -32,9 +33,9 @@ function AssistantMessage({ message }: MessageBubbleProps): React.JSX.Element {
 
   return (
     <div className="group flex flex-col gap-1.5">
-      <p className="text-[14.5px] leading-relaxed text-(--color-text-primary)">
-        {message.content}
-      </p>
+      <div className="text-[14.5px] leading-relaxed text-(--color-text-primary)">
+        <Markdown>{message.content}</Markdown>
+      </div>
       <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
         <IconButton aria-label="Copy" size="sm" onClick={handleCopy}>
           {copied ? <Check /> : <Copy />}

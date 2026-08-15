@@ -9,6 +9,7 @@ interface SidebarProps {
   mode: AppMode
   onModeChange: (mode: AppMode) => void
   onHideSidebar: () => void
+  onOpenSettings: () => void
   children: ReactNode
 }
 
@@ -16,6 +17,7 @@ export function Sidebar({
   mode,
   onModeChange,
   onHideSidebar,
+  onOpenSettings,
   children
 }: SidebarProps): React.JSX.Element {
   return (
@@ -40,7 +42,7 @@ export function Sidebar({
       <div className="mt-3 flex flex-1 flex-col overflow-hidden px-3">{children}</div>
 
       <div className="border-t border-(--color-border-subtle) p-3">
-        <SidebarItem icon={<Settings />} label="Settings" />
+        <SidebarItem icon={<Settings />} label="Settings" onClick={onOpenSettings} />
       </div>
     </div>
   )

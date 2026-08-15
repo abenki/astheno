@@ -1,9 +1,103 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { createServer } from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import {
+  createChat,
+  promptChat,
+  abortChat,
+  subscribeChat,
+  listChats,
+  openChat,
+  listModels,
+  setChatModel,
+  getProviderStatus,
+  setProviderApiKey,
+  clearProviderApiKey
+} from './agent/runtime'
+import type { ChatStreamEvent } from '../preload'
 
 let mainWindow: BrowserWindow | null = null
+// Chats we've already subscribed to in this process — avoids double
+// subscription if the renderer re-opens a chat that's already live.
+const subscribedChats = new Set<string>()
+
+// Dev convenience only — the Settings screen (gear icon) is the real,
+// persisted way to set a provider key; a stored credential wins over this
+// env var anyway. Lets a fresh clone's dev loop skip opening the app once
+// just to paste a key in.
+function loadDevEnv(): void {
+  if (!is.dev) return
+  try {
+    process.loadEnvFile(join(app.getAppPath(), '.env.local'))
+  } catch {
+    // no .env.local yet — provider calls will fail with a clear error until one exists
+  }
+}
+
+function ensureSubscribed(chatId: string): void {
+  if (subscribedChats.has(chatId)) return
+  subscribedChats.add(chatId)
+  subscribeChat(chatId, (event: ChatStreamEvent) => {
+    mainWindow?.webContents.send('astheno:chat:event', event)
+  })
+}
+
+function handle<Args extends unknown[], Result>(
+  channel: string,
+  fn: (...args: Args) => Promise<Result>
+): void {
+  ipcMain.handle(channel, async (_event, ...args: Args) => {
+    try {
+      return await fn(...args)
+    } catch (err) {
+      console.error(`[ipc:${channel}]`, err)
+      throw err
+    }
+  })
+}
+
+function registerChatIpc(): void {
+  handle('astheno:chat:list', async () => listChats())
+
+  handle('astheno:chat:open', async (chatId: string) => {
+    const result = await openChat(chatId)
+    ensureSubscribed(chatId)
+    return result
+  })
+
+  handle('astheno:chat:create', async (modelId?: string) => {
+    const { chatId, modelId: resolvedModelId } = await createChat(modelId)
+    ensureSubscribed(chatId)
+    return { chatId, modelId: resolvedModelId }
+  })
+
+  handle('astheno:chat:prompt', async (chatId: string, text: string) => {
+    await promptChat(chatId, text)
+  })
+
+  handle('astheno:chat:abort', async (chatId: string) => {
+    await abortChat(chatId)
+  })
+
+  handle('astheno:chat:listModels', async () => listModels())
+
+  handle('astheno:chat:setModel', async (chatId: string, modelId: string) => {
+    await setChatModel(chatId, modelId)
+  })
+}
+
+function registerSettingsIpc(): void {
+  handle('astheno:settings:getProviderStatus', async () => getProviderStatus())
+
+  handle('astheno:settings:setApiKey', async (providerId: string, apiKey: string) => {
+    await setProviderApiKey(providerId, apiKey)
+  })
+
+  handle('astheno:settings:clearApiKey', async (providerId: string) => {
+    await clearProviderApiKey(providerId)
+  })
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -18,7 +112,7 @@ function createWindow(): void {
     backgroundColor: '#ffffff',
     ...(process.platform === 'linux' ? {} : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -26,6 +120,12 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  if (is.dev) {
+    mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+      console.log('[renderer]', level, message, `${sourceId}:${line}`)
+    })
+  }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -78,7 +178,8 @@ function startDevInspectionServer(): void {
           (() => {
             const el = document.querySelector(${JSON.stringify(selector)});
             if (!el) return 'NOT_FOUND';
-            const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+            const proto = el instanceof HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+            const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
             setter.call(el, ${JSON.stringify(text)});
             el.dispatchEvent(new Event('input', { bubbles: true }));
             return 'OK';
@@ -123,6 +224,7 @@ function startDevInspectionServer(): void {
 }
 
 app.whenReady().then(() => {
+  loadDevEnv()
   electronApp.setAppUserModelId('com.astheno.app')
 
   app.on('browser-window-created', (_, window) => {
@@ -130,6 +232,8 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  registerChatIpc()
+  registerSettingsIpc()
 
   if (is.dev) {
     startDevInspectionServer()

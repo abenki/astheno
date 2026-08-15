@@ -6,16 +6,23 @@ import { EmptyState } from './features/chat/EmptyState'
 import { ThreadView } from './features/chat/ThreadView'
 import { useChat } from './features/chat/useChat'
 import { CoworkPlaceholder } from './features/cowork/CoworkPlaceholder'
+import { SettingsModal } from './features/settings/SettingsModal'
 
 export function AppShell(): React.JSX.Element {
   const [mode, setMode] = useState<AppMode>('chat')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const chat = useChat()
 
   return (
     <div className="flex h-screen bg-white">
       {sidebarOpen && (
-        <Sidebar mode={mode} onModeChange={setMode} onHideSidebar={() => setSidebarOpen(false)}>
+        <Sidebar
+          mode={mode}
+          onModeChange={setMode}
+          onHideSidebar={() => setSidebarOpen(false)}
+          onOpenSettings={() => setSettingsOpen(true)}
+        >
           {mode === 'chat' ? (
             <ChatHistoryList
               chats={chat.chats}
@@ -37,14 +44,28 @@ export function AppShell(): React.JSX.Element {
         )}
         {mode === 'chat' ? (
           chat.activeChat ? (
-            <ThreadView messages={chat.activeChat.messages} isSending={chat.isSending} onSend={chat.send} />
+            <ThreadView
+              messages={chat.activeChat.messages}
+              isSending={chat.isSending}
+              onSend={chat.send}
+              models={chat.models}
+              modelId={chat.modelId}
+              onModelChange={chat.setModel}
+            />
           ) : (
-            <EmptyState onSend={chat.send} />
+            <EmptyState
+              onSend={chat.send}
+              models={chat.models}
+              modelId={chat.modelId}
+              onModelChange={chat.setModel}
+            />
           )
         ) : (
           <CoworkPlaceholder />
         )}
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }

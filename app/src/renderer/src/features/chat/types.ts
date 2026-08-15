@@ -12,4 +12,11 @@ export interface Chat {
   title: string
   messages: Message[]
   updatedAt: number
+  modelId?: string
+  hydrated?: boolean
+}
+
+export interface ModelOption {
+  id: string
+  name: string
 }
