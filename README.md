@@ -6,6 +6,8 @@ actions via connectors and local tools — not yet built). It's built on the
 [Pi Coding Agent SDK](https://github.com/earendil-works/pi) for the agent
 loop, session persistence, and multi-provider model support.
 
+![Astheno screenshot](docs/screenshot.png)
+
 ## Repository layout
 
 - `app/` — the Electron application. All commands below run from here.
