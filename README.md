@@ -1,4 +1,8 @@
-# Astheno
+<div align="center">
+  <img src="app/resources/icon.png" width="120" alt="Astheno logo" />
+
+  # Astheno
+</div>
 
 Astheno is a personal AI harness: a macOS Electron app with two modes —
 **Chat** (plain conversation, no tools) and **Cowork** (agentic, takes real
