@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { createServer } from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import icon from '../../resources/icon.png?asset'
 import {
   createChat,
   promptChat,
@@ -121,7 +122,7 @@ function createWindow(): void {
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 19 },
     backgroundColor: '#f5f5f5',
-    ...(process.platform === 'linux' ? {} : {}),
+    ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
@@ -237,6 +238,13 @@ function startDevInspectionServer(): void {
 app.whenReady().then(() => {
   loadDevEnv()
   electronApp.setAppUserModelId('com.astheno.app')
+
+  // Packaged builds get the icon from the app bundle (build/icon.icns) automatically —
+  // this is only needed because `npm run dev`/`start` launch the bare Electron binary,
+  // which shows Electron's own dock icon otherwise.
+  if (is.dev && process.platform === 'darwin') {
+    app.dock?.setIcon(icon)
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

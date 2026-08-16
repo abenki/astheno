@@ -1,7 +1,5 @@
 {
-  "fill" : {
-    "solid" : "extended-gray:0.00000,1.00000"
-  },
+  "fill" : "system-dark",
   "groups" : [
     {
       "layers" : [
@@ -12,7 +10,14 @@
           },
           "glass" : true,
           "image-name" : "astheno.svg",
-          "name" : "astheno"
+          "name" : "astheno",
+          "position" : {
+            "scale" : 0.85,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         }
       ],
       "shadow" : {
