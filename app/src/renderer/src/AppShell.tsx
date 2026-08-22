@@ -38,7 +38,7 @@ export function AppShell(): React.JSX.Element {
       )}
 
       <div
-        className={`my-3 mr-3 flex flex-1 flex-col overflow-hidden rounded-(--radius-sm) border border-(--color-border-subtle) bg-(--color-surface-canvas) shadow-sm ${sidebarOpen ? 'ml-3' : 'ml-0'}`}
+        className={`my-3 mr-3 flex flex-1 flex-col overflow-hidden rounded-(--radius-sm) border border-(--color-border-subtle) bg-(--color-surface-canvas) ${sidebarOpen ? 'ml-3' : 'ml-0'}`}
       >
         {sidebarOpen ? (
           <div className="drag h-[52px] shrink-0" />
