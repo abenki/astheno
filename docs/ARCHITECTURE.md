@@ -210,21 +210,29 @@ even though they work fine running unsigned in dev.
 ## 6. Session & data model
 
 Single global "agent home" — `~/Library/Application Support/Astheno/agent/`
-— shared by Chat and Cowork, no per-task/per-project working directory. This
-matches how you described using the app: cross-cutting assistant tasks
-against your own accounts, not isolated coding-style projects, so a
-per-workspace-cwd model would add structure nothing needs yet.
+— shared by Chat and Cowork for *storage*: both write their session jsonl
+files under this one root (Chat at its default `SessionManager` location,
+Cowork under a `cowork-sessions/` subfolder — separate listing pools, so
+`listChats()`/`listCoworkSessions()` never see each other's sessions).
 
 - Sessions persisted via Pi's `SessionManager` (jsonl, branching built in) —
-  the sidebar (`ChatHistoryList` / `groupChats.ts`, currently fed by
-  `mockData.ts`) becomes a thin view over `SessionManager.list()` /
-  `.listAll()` metadata instead.
-- One exception to "no per-task directory": when Cowork drafts a document
-  (a stated future use case), the `write`/`edit` tools need *some* cwd to
-  operate in. Give them a single shared
-  `~/Library/Application Support/Astheno/workspace/` — not per-session, just
-  a standing "stuff Astheno made" folder the user can browse in Finder. This
-  is a shared scratch folder, not a session-isolation mechanism.
+  `ChatHistoryList`/`groupChats.ts` for Chat and `CoworkSessionList`/
+  `groupByFolder.ts` for Cowork are both thin views over
+  `SessionManager.list()`/`.listAll()` metadata.
+- **Superseding this section's earlier "no per-task/per-project working
+  directory" note, for Cowork specifically**: each Cowork session *is*
+  pinned to one folder for its lifetime, picked via a native folder dialog
+  when the session is created (`runtime.ts`'s `createCoworkSession`). That
+  folder becomes both the session's tool-execution `cwd` (what `bash`/`read`/
+  `write`/etc. actually operate against) and its `SessionManager`-header
+  `cwd` — the two must be set to the same value, since the sidebar's
+  folder-grouping and a resumed session's tool-cwd restoration both read
+  from that one stored field. Chat has no equivalent — it has no tools, so
+  cwd is only ever storage-location bookkeeping for it, not a real per-task
+  distinction. `~/Library/Application Support/Astheno/workspace/` still
+  exists as the folder picker's *default offered location*, not as a shared
+  cwd every session gets — a user picking it repeatedly just makes those
+  sessions group together like any other folder would.
 
 ## 7. Settings (gear icon)
 
@@ -285,8 +293,10 @@ module structure in §5 doesn't need to change to accommodate it later.
 
 ## 9. Open risks / follow-ups
 
-- Confirmation-gating UI (§3) doesn't exist yet in any form — needs a new
-  Cowork transcript component, not just a wiring change.
+- Confirmation-gating UI (§3) doesn't exist yet in any form — a Cowork
+  transcript now exists (`CoworkThreadView`/`CoworkMessageList`), so this is
+  an inline confirm/cancel card added to it plus the pause-before-execute
+  plumbing in a tool's `execute()`, not building a transcript from scratch.
 - llama.cpp binary download/update flow (§4) needs an actual pinned
   known-good version chosen before first implementation.
 - AppleScript entitlements (§5) can't be verified in dev (unsigned) — first
