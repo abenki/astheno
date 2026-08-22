@@ -1,6 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { createServer } from 'http'
+import { mkdirSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import {
@@ -16,14 +17,24 @@ import {
   generateChatTitle,
   getProviderStatus,
   setProviderApiKey,
-  clearProviderApiKey
+  clearProviderApiKey,
+  createCoworkSession,
+  promptCowork,
+  abortCowork,
+  subscribeCowork,
+  listCoworkSessions,
+  openCoworkSession,
+  setCoworkModel,
+  renameCoworkSession,
+  getCoworkDefaultFolder
 } from './agent/runtime'
-import type { ChatStreamEvent } from '../preload'
+import type { ChatStreamEvent, CoworkStreamEvent } from '../preload'
 
 let mainWindow: BrowserWindow | null = null
 // Chats we've already subscribed to in this process — avoids double
 // subscription if the renderer re-opens a chat that's already live.
 const subscribedChats = new Set<string>()
+const subscribedCoworkSessions = new Set<string>()
 
 // Dev convenience only — the Settings screen (gear icon) is the real,
 // persisted way to set a provider key; a stored credential wins over this
@@ -43,6 +54,14 @@ function ensureSubscribed(chatId: string): void {
   subscribedChats.add(chatId)
   subscribeChat(chatId, (event: ChatStreamEvent) => {
     mainWindow?.webContents.send('astheno:chat:event', event)
+  })
+}
+
+function ensureCoworkSubscribed(chatId: string): void {
+  if (subscribedCoworkSessions.has(chatId)) return
+  subscribedCoworkSessions.add(chatId)
+  subscribeCowork(chatId, (event: CoworkStreamEvent) => {
+    mainWindow?.webContents.send('astheno:cowork:event', event)
   })
 }
 
@@ -96,6 +115,51 @@ function registerChatIpc(): void {
   handle('astheno:chat:generateTitle', async (chatId: string, firstMessage: string) => {
     const title = await generateChatTitle(chatId, firstMessage)
     return { title }
+  })
+}
+
+function registerCoworkIpc(): void {
+  handle('astheno:cowork:list', async () => listCoworkSessions())
+
+  handle('astheno:cowork:open', async (chatId: string) => {
+    const result = await openCoworkSession(chatId)
+    ensureCoworkSubscribed(chatId)
+    return result
+  })
+
+  handle('astheno:cowork:pickFolder', async () => {
+    if (!mainWindow) return null
+    const defaultPath = getCoworkDefaultFolder()
+    mkdirSync(defaultPath, { recursive: true })
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  handle('astheno:cowork:create', async (cwd: string, modelId?: string) => {
+    const { chatId, modelId: resolvedModelId } = await createCoworkSession(cwd, modelId)
+    ensureCoworkSubscribed(chatId)
+    return { chatId, modelId: resolvedModelId }
+  })
+
+  handle('astheno:cowork:prompt', async (chatId: string, text: string) => {
+    await promptCowork(chatId, text)
+  })
+
+  handle('astheno:cowork:abort', async (chatId: string) => {
+    await abortCowork(chatId)
+  })
+
+  handle('astheno:cowork:listModels', async () => listModels())
+
+  handle('astheno:cowork:setModel', async (chatId: string, modelId: string) => {
+    await setCoworkModel(chatId, modelId)
+  })
+
+  handle('astheno:cowork:rename', async (chatId: string, title: string) => {
+    await renameCoworkSession(chatId, title)
   })
 }
 
@@ -252,6 +316,7 @@ app.whenReady().then(() => {
 
   createWindow()
   registerChatIpc()
+  registerCoworkIpc()
   registerSettingsIpc()
 
   if (is.dev) {

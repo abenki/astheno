@@ -5,7 +5,9 @@ import { ChatHistoryList } from './features/chat/ChatHistoryList'
 import { EmptyState } from './features/chat/EmptyState'
 import { ThreadView } from './features/chat/ThreadView'
 import { useChat } from './features/chat/useChat'
-import { CoworkPlaceholder } from './features/cowork/CoworkPlaceholder'
+import { CoworkSessionList } from './features/cowork/CoworkSessionList'
+import { CoworkThreadView } from './features/cowork/CoworkThreadView'
+import { useCowork } from './features/cowork/useCowork'
 import { SettingsModal } from './features/settings/SettingsModal'
 
 export function AppShell(): React.JSX.Element {
@@ -13,6 +15,7 @@ export function AppShell(): React.JSX.Element {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const chat = useChat()
+  const cowork = useCowork()
 
   return (
     <div className="flex h-screen bg-(--color-surface-sunken)">
@@ -32,7 +35,13 @@ export function AppShell(): React.JSX.Element {
               onRenameChat={chat.renameChat}
             />
           ) : (
-            <p className="px-2.5 text-[13px] text-(--color-text-tertiary)">Nothing here yet</p>
+            <CoworkSessionList
+              sessions={cowork.sessions}
+              activeSessionId={cowork.activeSessionId}
+              onSelectSession={cowork.selectSession}
+              onNewSession={cowork.newSession}
+              onRenameSession={cowork.renameSession}
+            />
           )}
         </Sidebar>
       )}
@@ -63,8 +72,24 @@ export function AppShell(): React.JSX.Element {
               onModelChange={chat.setModel}
             />
           )
+        ) : cowork.activeSession ? (
+          <CoworkThreadView
+            cwd={cowork.activeSession.cwd}
+            messages={cowork.activeSession.messages}
+            isSending={cowork.isSending}
+            onSend={cowork.send}
+            models={cowork.models}
+            modelId={cowork.modelId}
+            onModelChange={cowork.setModel}
+          />
         ) : (
-          <CoworkPlaceholder />
+          <EmptyState
+            heading="What should we work on?"
+            onSend={cowork.send}
+            models={cowork.models}
+            modelId={cowork.modelId}
+            onModelChange={cowork.setModel}
+          />
         )}
       </div>
 
